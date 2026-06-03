@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SecureKey — Enterprise Key Management</title>
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+  <!-- Demo banner — persistent tenant context for sales / POC walkthroughs -->
+  <div class="demo-banner" role="banner">
+    SecureKey Enterprise KMS<span class="sep">·</span>Demo Environment<span class="sep">·</span>ACME Corp Financial Services<span class="sep">·</span>Powered by eMudhra
+  </div>
+
+  <!-- Login: gate before any cryptographic operations; KMS requires authenticated sessions -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">🔐</div>
+        <div>
+          <h1>SecureKey</h1>
+          <span>Enterprise Key Management System</span>
+        </div>
+      </div>
+      <form id="login-form" onsubmit="return false;">
+        <div class="form-group">
+          <label for="email">Work Email</label>
+          <input type="email" id="email" value="admin@acme-corp.com" />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" value="••••••••" />
+        </div>
+        <button type="button" id="login-btn" class="btn btn-primary" style="width:100%;margin-top:8px;padding:12px;">
+          Sign In to Console
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Splash: vault connection handshake — builds trust before exposing key material UI -->
+  <div id="splash-screen" class="splash-screen" aria-live="polite" aria-busy="true">
+    <div class="splash-logo">
+      <div class="splash-logo-icon">🔐</div>
+      <div>
+        <h1>SecureKey</h1>
+        <span>Enterprise Key Management</span>
+      </div>
+    </div>
+    <div class="splash-progress-wrap">
+      <p class="splash-progress-text">Initialising secure vault connection...</p>
+      <div class="splash-progress-track">
+        <div id="splash-progress-bar" class="splash-progress-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App shell: post-login KMS console with sidebar navigation -->
+  <div id="app-shell" class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon">🔐</div>
+        <div class="sidebar-brand-text">
+          SecureKey
+          <small>v2.4.1 · FIPS 140-2</small>
+        </div>
+      </div>
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <div class="nav-section-label">Operations</div>
+        <button class="nav-item active" data-screen="dashboard" data-breadcrumb="Dashboard">
+          <span class="icon">◈</span> Dashboard
+        </button>
+        <button class="nav-item" data-screen="key-vault" data-breadcrumb="Key Vault">
+          <span class="icon">🗝</span> Key Vault
+        </button>
+        <button class="nav-item" data-screen="generate-key" data-breadcrumb="Generate Key">
+          <span class="icon">✦</span> Generate Key
+        </button>
+        <div class="nav-section-label">Governance</div>
+        <button class="nav-item" data-screen="users-roles" data-breadcrumb="Users &amp; Roles">
+          <span class="icon">👥</span> Users &amp; Roles
+        </button>
+        <button class="nav-item" data-screen="audit-logs" data-breadcrumb="Audit Logs">
+          <span class="icon">📋</span> Audit Logs
+        </button>
+        <button class="nav-item" data-screen="api-access" data-breadcrumb="API Access">
+          <span class="icon">⚡</span> API Access
+        </button>
+        <button class="nav-item" data-screen="ai-insights" data-breadcrumb="AI Insights">
+          <span class="icon">🤖</span> AI Insights
+        </button>
+      </nav>
+      <div class="sidebar-footer">Region: us-east-1 · HSM Cluster Active</div>
+    </aside>
+
+    <div class="main-area">
+      <header class="topbar">
+        <div class="breadcrumb" id="breadcrumb">
+          Home / <strong>Dashboard</strong>
+        </div>
+        <div class="topbar-actions">
+          <div class="user-pill">
+            <div class="user-avatar">SA</div>
+            <span>Sarah Admin</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="screen-content">
+
+        <!-- Dashboard: operational overview — key counts, expiring keys, recent crypto events -->
+        <section id="screen-dashboard" class="screen active">
+          <div class="screen-header-row">
+            <div class="screen-header" style="margin-bottom:0;">
+              <h2>Dashboard</h2>
+              <p>Real-time overview of your cryptographic key estate</p>
+            </div>
+            <button class="btn btn-primary nav-to-generate">+ Generate Key</button>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="label">Total Keys</div>
+              <div class="value">247</div>
+              <div class="delta">+12 this month</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Active Keys</div>
+              <div class="value">198</div>
+              <div class="delta">80.2% of estate</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Expiring in 30d</div>
+              <div class="value">14</div>
+              <div class="delta warn">Requires attention</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">API Calls (24h)</div>
+              <div class="value mono">48.2K</div>
+              <div class="delta">99.97% success</div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Recent Activity</h3>
+                <button class="btn btn-ghost btn-sm" id="view-all-activity">View All →</button>
+              </div>
+              <ul class="activity-list" id="dashboard-activity"></ul>
+            </div>
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Keys Requiring Rotation</h3>
+              </div>
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Key ID</th>
+                    <th>Name</th>
+                    <th>Days Left</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">key_a8f3c21d</td>
+                    <td>prod-db-encryption</td>
+                    <td><span style="color:var(--yellow)">7 days</span></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">key_b2e91f04</td>
+                    <td>api-signing-primary</td>
+                    <td><span style="color:var(--yellow)">12 days</span></td>
+                  </tr>
+                  <tr>
+                    <td class="mono">key_c7d45a88</td>
+                    <td>backup-tape-key</td>
+                    <td><span style="color:var(--orange)">3 days</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Key Vault: central inventory — all CMKs with lifecycle status for auditors -->
+        <section id="screen-key-vault" class="screen">
+          <div class="screen-header-row">
+            <div class="screen-header" style="margin-bottom:0;">
+              <h2>Key Vault</h2>
+              <p>Manage and monitor all cryptographic keys in your organization</p>
+            </div>
+            <button class="btn btn-primary nav-to-generate">+ Generate Key</button>
+          </div>
+
+          <div class="filter-pills" id="vault-filters">
+            <button class="filter-pill active" data-filter="all">All Keys</button>
+            <button class="filter-pill" data-filter="active">Active</button>
+            <button class="filter-pill" data-filter="rotated">Rotated</button>
+            <button class="filter-pill" data-filter="revoked">Revoked</button>
+            <button class="filter-pill" data-filter="aes">AES-256</button>
+            <button class="filter-pill" data-filter="rsa">RSA-4096</button>
+          </div>
+
+          <div class="panel">
+            <table class="data-table" id="vault-table">
+              <thead>
+                <tr>
+                  <th>Key ID</th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Purpose</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="vault-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Generate Key: provisioning workflow — creates new CMK with policy metadata -->
+        <section id="screen-generate-key" class="screen">
+          <div class="screen-header">
+            <h2>Generate Key</h2>
+            <p>Provision a new cryptographic key with defined purpose and rotation policy</p>
+          </div>
+
+          <div class="generate-layout panel" style="padding:24px;">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="key-name">Key Name</label>
+                <input type="text" id="key-name" placeholder="e.g. prod-api-signing" value="staging-webhook-signer" />
+              </div>
+              <div class="form-group">
+                <label for="key-type">Key Type</label>
+                <select id="key-type">
+                  <option value="AES-256">AES-256</option>
+                  <option value="RSA-4096">RSA-4096</option>
+                  <option value="EC-P256">EC-P256</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="key-purpose">Purpose</label>
+                <select id="key-purpose">
+                  <option value="ENCRYPT_DECRYPT">Encrypt / Decrypt</option>
+                  <option value="SIGN_VERIFY">Sign / Verify</option>
+                  <option value="WRAP_UNWRAP">Wrap / Unwrap</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="expiry-days">Expiry (days)</label>
+                <input type="number" id="expiry-days" value="365" min="30" max="1095" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="key-description">Description (optional)</label>
+              <textarea id="key-description" rows="3" placeholder="Business justification for this key...">Webhook payload signing for staging environment</textarea>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-primary" id="generate-key-btn">Generate Key ✦</button>
+              <button type="button" class="btn btn-secondary" data-screen="key-vault">Cancel</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Users & Roles: RBAC — who may use which keys (Managing Access) -->
+        <section id="screen-users-roles" class="screen">
+          <div class="screen-header">
+            <h2>Users &amp; Roles</h2>
+            <p>Managing access — role-based permissions control who can use each cryptographic key</p>
+          </div>
+
+          <div class="rbac-story-panel panel" style="padding:20px;margin-bottom:20px;">
+            <div class="api-section-label" style="margin-bottom:12px;">Managing Access</div>
+            <p style="font-size:0.85rem;color:var(--text2);margin-bottom:16px;max-width:720px;">
+              Someone must control key permissions. The same key can be allowed for one role and denied for another — enforced by SecureKey RBAC before any encrypt, decrypt, or sign operation.
+            </p>
+            <div class="rbac-story-grid">
+              <div class="rbac-story-card rbac-allow">
+                <div class="rbac-story-user">
+                  <span class="user-avatar-small">RS</span>
+                  <div>
+                    <strong>Rahul Sharma</strong>
+                    <span class="role-badge role-developer">Developer</span>
+                  </div>
+                </div>
+                <div class="rbac-story-arrow">↓</div>
+                <p class="rbac-story-result">Can access <span class="mono">payment-hsm-key</span></p>
+                <span class="access-pill allow">✓ Allowed</span>
+              </div>
+              <div class="rbac-story-card rbac-deny">
+                <div class="rbac-story-user">
+                  <span class="user-avatar-small">PN</span>
+                  <div>
+                    <strong>Priya Nair</strong>
+                    <span class="role-badge role-auditor">Auditor</span>
+                  </div>
+                </div>
+                <div class="rbac-story-arrow">↓</div>
+                <p class="rbac-story-result">Cannot access <span class="mono">payment-hsm-key</span></p>
+                <span class="access-pill deny">✕ Denied</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="roles-cards-row">
+            <div class="role-def-card">
+              <span class="role-badge role-admin">Admin</span>
+              <h4>John — Full control</h4>
+              <p>Provision, rotate, revoke keys; manage users and policies. All keys.</p>
+            </div>
+            <div class="role-def-card">
+              <span class="role-badge role-developer">Developer</span>
+              <h4>Rahul — Application use</h4>
+              <p>Encrypt, decrypt, sign only on <strong>assigned</strong> keys (e.g. payment HSM).</p>
+            </div>
+            <div class="role-def-card">
+              <span class="role-badge role-auditor">Auditor</span>
+              <h4>Priya — Read-only governance</h4>
+              <p>View audit logs and metadata. No cryptographic operations on production keys.</p>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:20px;">
+            <div class="panel-header">
+              <h3>Team members</h3>
+            </div>
+            <table class="data-table" id="users-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Last Active</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Audit Logs: immutable event trail — required for SOC2/PCI key access evidence -->
+        <section id="screen-audit-logs" class="screen">
+          <div class="screen-header">
+            <h2>Audit Logs</h2>
+            <p>Immutable record of all key management and access events</p>
+          </div>
+
+          <div class="alert-banner">⚠ Row 4 flagged: off-hours key access detected — click the highlighted row to investigate</div>
+
+          <div class="panel">
+            <table class="data-table" id="audit-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Action</th>
+                  <th>Key ID</th>
+                  <th>Actor</th>
+                  <th>IP Address</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody id="audit-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- API Access: developer reference — REST endpoints for programmatic key lifecycle -->
+        <section id="screen-api-access" class="screen">
+          <div class="screen-header">
+            <h2>API Access</h2>
+            <p>Programmatic key management via REST API — integrate with your applications</p>
+          </div>
+
+          <div class="panel api-config-panel">
+            <div class="api-config-grid">
+              <div class="api-config-block">
+                <div class="api-config-label">Production</div>
+                <div class="mono api-config-value">https://api.securekey.emudhra.com/v1</div>
+              </div>
+              <div class="api-config-block">
+                <div class="api-config-label">Authentication header</div>
+                <div class="mono api-config-value api-auth-header">Authorization: Bearer &lt;your-api-key&gt;</div>
+              </div>
+              <div class="api-config-block api-config-key">
+                <div class="api-config-label">Your API Key</div>
+                <div class="mono api-key-display" id="api-key-display" style="margin-top:4px;">sk_live_••••••••8e4f</div>
+                <button type="button" class="btn btn-secondary btn-sm" id="regenerate-api-key-btn" style="margin-top:10px;">Regenerate Key</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="api-section-label">API ENDPOINTS</div>
+          <div class="endpoint-list" id="endpoint-list"></div>
+        </section>
+
+        <!-- AI Insights: ML-assisted anomaly, compliance, and documentation -->
+        <section id="screen-ai-insights" class="screen">
+          <div class="screen-header">
+            <h2>AI Insights</h2>
+            <p>Intelligent security analysis and compliance automation</p>
+          </div>
+
+          <div class="ai-banner">FUTURE ROADMAP PREVIEW</div>
+
+          <div class="ai-cards-row">
+            <div class="ai-card">
+              <h4>🔍 Anomaly Detection</h4>
+              <div class="ai-insight-item warn">⚠ Off-hours access: <strong>key_a8f3c21d</strong> accessed at 02:14 UTC by svc-backup</div>
+              <div class="ai-insight-item warn">⚠ High frequency: <strong>key_d91b7e32</strong> — 847 decrypt ops in 15 min (3× baseline)</div>
+              <button type="button" class="btn btn-secondary" id="ai-investigate-btn">Investigate →</button>
+            </div>
+            <div class="ai-card">
+              <h4>📋 Compliance Assistant</h4>
+              <div class="ai-insight-item ok">✓ FIPS compliant</div>
+              <div class="ai-insight-item warn">⚠ 31 keys rotation gap</div>
+              <button type="button" class="btn btn-secondary" id="ai-report-btn">Generate Report →</button>
+            </div>
+            <div class="ai-card">
+              <h4>📄 Documentation AI</h4>
+              <div class="ai-insight-item">→ Auto-generate audit summary</div>
+              <div class="ai-insight-item">→ API integration guide generator</div>
+              <button type="button" class="btn btn-secondary" id="ai-doc-btn">Generate Doc →</button>
+            </div>
+          </div>
+
+          <div class="roadmap-grid">
+            <div class="roadmap-item">
+              <div class="roadmap-label cyan">Q3 2025</div>
+              <h4>Predictive Rotation Alerts</h4>
+              <p>ML-driven forecasts of key expiry and usage patterns before policy violations occur.</p>
+            </div>
+            <div class="roadmap-item">
+              <div class="roadmap-label yellow">Q4 2025</div>
+              <h4>Natural Language Audit Query</h4>
+              <p>Ask questions about your audit trail in plain English.</p>
+              <div class="example">"Show me all keys accessed outside business hours last month"</div>
+            </div>
+            <div class="roadmap-item">
+              <div class="roadmap-label green">Q1 2026</div>
+              <h4>Auto Compliance Report Generation</h4>
+              <p>One-click SOC2, PCI-DSS, and HIPAA key management evidence packages.</p>
+            </div>
+            <div class="roadmap-item">
+              <div class="roadmap-label grey">Q2 2026</div>
+              <h4>AI Security Copilot</h4>
+              <p>Conversational assistant for key policy recommendations and incident response.</p>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Manage Access modal — per-user key permissions (RBAC) -->
+  <div id="manage-access-modal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h3 id="manage-access-title">Manage Access</h3>
+        <button class="modal-close" data-close-modal="manage-access-modal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body report-modal-body">
+        <p id="manage-access-subtitle" style="font-size:0.85rem;color:var(--text2);margin-bottom:16px;"></p>
+        <table class="data-table" id="access-matrix-table">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Key ID</th>
+              <th>Access</th>
+              <th>Permitted actions</th>
+            </tr>
+          </thead>
+          <tbody id="access-matrix-tbody"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal="manage-access-modal">Close</button>
+        <button type="button" class="btn btn-primary btn-sm" id="save-access-btn">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Key Detail Modal: inspect single CMK metadata without leaving vault context -->
+  <div id="key-detail-modal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Key Details</h3>
+        <button class="modal-close" data-close-modal="key-detail-modal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="key-detail-body"></div>
+      <div class="modal-footer modal-footer-actions-row">
+        <button class="btn btn-secondary" data-close-modal="key-detail-modal">Close</button>
+        <div class="modal-footer-btns">
+          <button type="button" class="btn btn-secondary btn-sm" id="key-detail-rotate-btn">Rotate Key</button>
+          <button type="button" class="btn btn-danger btn-sm" id="key-detail-revoke-btn">Revoke Key</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rotate Key confirmation — version bump while preserving app compatibility -->
+  <div id="rotate-key-modal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Rotate Key</h3>
+        <button class="modal-close" data-close-modal="rotate-key-modal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="rotate-key-intro">
+          This action will generate a new version of the selected key while maintaining compatibility with existing applications.
+        </p>
+        <div class="rotate-version-grid">
+          <div class="rotate-version-row">
+            <span class="label">Current Version</span>
+            <span class="value mono" id="rotate-current-version">v1</span>
+          </div>
+          <div class="rotate-version-row">
+            <span class="label">New Version</span>
+            <span class="value mono rotate-new-version" id="rotate-new-version">v2</span>
+          </div>
+        </div>
+        <p class="rotate-key-name mono" id="rotate-key-name-label"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal="rotate-key-modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="confirm-rotate-key-btn">Rotate Key</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rotate success — confirms version change and links to audit trail -->
+  <div id="rotate-success-modal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal success-modal">
+      <div class="modal-body">
+        <div class="success-icon">✓</div>
+        <h3>Key Rotated Successfully</h3>
+        <div class="rotate-success-details">
+          <div class="detail-row"><span class="label">Old Version</span><span class="value mono" id="rotate-success-old">v1</span></div>
+          <div class="detail-row"><span class="label">New Version</span><span class="value mono" id="rotate-success-new">v2</span></div>
+          <div class="detail-row"><span class="label">Rotation Date</span><span class="value" id="rotate-success-date">Today</span></div>
+          <div class="detail-row"><span class="label">Key</span><span class="value mono" id="rotate-success-key-name">—</span></div>
+        </div>
+        <div style="display:flex;gap:12px;justify-content:center;margin-top:20px;">
+          <button class="btn btn-secondary" data-close-modal="rotate-success-modal">Close</button>
+          <button type="button" class="btn btn-primary btn-sm" id="view-audit-after-rotate-btn">View Audit Log →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Modal: confirms key provisioning — shows new key_id for vault lookup -->
+  <div id="success-modal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal success-modal">
+      <div class="modal-body">
+        <div class="success-icon">✓</div>
+        <h3>Key Generated Successfully</h3>
+        <p>Your new cryptographic key has been provisioned and is ready for use.</p>
+        <div class="success-key-id" id="success-key-id">key_f4e92b17</div>
+        <p class="success-hsm-line">✓ Key secured by eMudhra HSM Infrastructure</p>
+        <div style="display:flex;gap:12px;justify-content:center;">
+          <button class="btn btn-secondary" data-close-modal="success-modal">Dismiss</button>
+          <button class="btn btn-primary" id="view-in-vault-btn">View in Vault →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security alert modal — triggered from flagged audit row during threat investigation -->
+  <div id="security-alert-modal" class="modal-overlay" role="alertdialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>⚠ Security Alert Detected</h3>
+        <button class="modal-close" data-close-modal="security-alert-modal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <span class="risk-badge">● HIGH RISK</span>
+        <div class="security-threat-summary">
+          Cryptographic key <strong class="mono">db-prod-aes-01</strong> was accessed outside defined business hours
+          (02:14 UTC) from an unrecognised source IP <strong class="mono">192.168.4.22</strong>. This pattern does not
+          match scheduled backup or approved service accounts.
+        </div>
+        <p class="security-recommended">
+          <strong>Recommended action:</strong> Immediately revoke the affected key and rotate dependent credentials.
+          Review IAM bindings for <span class="mono">svc-backup@acme</span> and enable enhanced monitoring on the
+          production encryption key ring.
+        </p>
+        <button type="button" class="btn btn-revoke-immediate" id="revoke-key-immediate-btn">
+          Revoke Key Immediately
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compliance report modal — output of Generate Report on AI Insights -->
+  <div id="compliance-report-modal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h3>📋 Compliance Report</h3>
+        <button class="modal-close" data-close-modal="compliance-report-modal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body report-modal-body">
+        <div class="report-meta">
+          <span><strong>Organization:</strong> ACME Corp Financial Services</span>
+          <span class="mono"><strong>Generated:</strong> 2025-05-31 14:32 UTC</span>
+          <span><strong>Report ID:</strong> <span class="mono">rpt_compliance_q2_2025</span></span>
+        </div>
+
+        <section class="report-section">
+          <h4>Executive Summary</h4>
+          <p>SecureKey KMS estate comprises <strong>247 cryptographic keys</strong> across 3 regions. This automated assessment covers FIPS 140-2 HSM compliance, rotation policy adherence, and key lifecycle controls for the current audit period.</p>
+        </section>
+
+        <section class="report-section">
+          <h4>FIPS 140-2 Compliance</h4>
+          <div class="report-status-ok">✓ <strong>Compliant</strong> — All HSM modules operating at FIPS 140-2 Level 3. eMudhra HSM cluster <span class="mono">us-east-1</span> validated. No exceptions recorded.</div>
+        </section>
+
+        <section class="report-section">
+          <h4>Key Rotation Policy — Gaps Identified</h4>
+          <p class="report-warn-line">⚠ <strong>31 keys</strong> exceed the 90-day rotation SLA window and require remediation.</p>
+          <table class="data-table report-table">
+            <thead>
+              <tr>
+                <th>Key ID</th>
+                <th>Name</th>
+                <th>Days Over SLA</th>
+                <th>Risk</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">key_a8f3c21d</td>
+                <td>prod-db-encryption</td>
+                <td>12 days</td>
+                <td><span class="status-badge pending">Medium</span></td>
+              </tr>
+              <tr>
+                <td class="mono">key_b2e91f04</td>
+                <td>api-signing-primary</td>
+                <td>8 days</td>
+                <td><span class="status-badge pending">Medium</span></td>
+              </tr>
+              <tr>
+                <td class="mono">key_c7d45a88</td>
+                <td>backup-tape-key</td>
+                <td>21 days</td>
+                <td><span class="status-badge revoked">High</span></td>
+              </tr>
+              <tr>
+                <td colspan="4" style="text-align:center;color:var(--text3);font-size:0.75rem;">+ 28 additional keys — see full export</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="report-section">
+          <h4>Recommendations</h4>
+          <ul class="report-list">
+            <li>Schedule immediate rotation for 3 high-risk keys past 21-day SLA breach.</li>
+            <li>Enable predictive rotation alerts (Q3 2025 roadmap) for proactive remediation.</li>
+            <li>Review off-hours access policy for <span class="mono">key_a8f3c21d</span> following anomaly detection alert.</li>
+          </ul>
+        </section>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal="compliance-report-modal">Close</button>
+        <button type="button" class="btn btn-primary btn-sm" id="download-compliance-report-btn">Download PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Documentation modal — output of Generate Doc on AI Insights -->
+  <div id="documentation-modal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h3>📄 Generated Documentation</h3>
+        <button class="modal-close" data-close-modal="documentation-modal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body report-modal-body">
+        <div class="doc-tabs">
+          <button type="button" class="doc-tab active" data-doc-tab="audit">Audit Summary</button>
+          <button type="button" class="doc-tab" data-doc-tab="api">API Integration Guide</button>
+        </div>
+
+        <div id="doc-panel-audit" class="doc-panel active">
+          <div class="report-meta">
+            <span><strong>Document:</strong> Q2 2025 Audit Summary</span>
+            <span class="mono"><strong>Generated:</strong> 2025-05-31 14:32 UTC</span>
+          </div>
+          <section class="report-section">
+            <h4>Overview</h4>
+            <p>During Q2 2025, ACME Corp Financial Services recorded <strong>1,247 key management events</strong> via SecureKey KMS. Overall API success rate: <strong>99.97%</strong>. One security anomaly was flagged for off-hours decrypt access.</p>
+          </section>
+          <section class="report-section">
+            <h4>Key Lifecycle Events</h4>
+            <ul class="report-list">
+              <li><strong>12</strong> new keys provisioned</li>
+              <li><strong>8</strong> keys rotated per policy</li>
+              <li><strong>1</strong> key revoked (<span class="mono">key_f1b82d44</span> — incident response)</li>
+              <li><strong>14</strong> keys approaching expiry within 30 days</li>
+            </ul>
+          </section>
+          <section class="report-section">
+            <h4>Flagged Incident</h4>
+            <p class="report-warn-line">⚠ <span class="mono">key_a8f3c21d</span> — off-hours decrypt at 02:14 UTC from IP <span class="mono">192.168.4.22</span> by <span class="mono">svc-backup@acme</span>. Status: Under investigation.</p>
+          </section>
+        </div>
+
+        <div id="doc-panel-api" class="doc-panel">
+          <div class="report-meta">
+            <span><strong>Document:</strong> SecureKey REST API Integration Guide</span>
+            <span class="mono">v1.0 · OpenAPI 3.1</span>
+          </div>
+          <section class="report-section">
+            <h4>Base URL</h4>
+            <p class="mono doc-code-line">https://api.securekey.emudhra.com/v1</p>
+          </section>
+          <section class="report-section">
+            <h4>Authentication</h4>
+            <p>All requests require a Bearer token in the <span class="mono">Authorization</span> header:</p>
+            <p class="mono doc-code-line">Authorization: Bearer &lt;your-api-key&gt;</p>
+          </section>
+          <section class="report-section">
+            <h4>Core Endpoints</h4>
+            <ul class="report-list mono doc-endpoint-list">
+              <li><span class="method-inline post">POST</span> /v1/keys — Generate a new cryptographic key</li>
+              <li><span class="method-inline get">GET</span> /v1/keys — List keys (filters: status, type, limit)</li>
+              <li><span class="method-inline post">POST</span> /v1/keys/&#123;id&#125;/rotate — Rotate an existing key</li>
+              <li><span class="method-inline post danger">POST</span> /v1/keys/&#123;id&#125;/revoke — Revoke a key immediately</li>
+              <li><span class="method-inline get">GET</span> /v1/audit — Retrieve audit log events</li>
+            </ul>
+          </section>
+          <section class="report-section">
+            <h4>Quick Start Example</h4>
+            <pre class="doc-pre"><span class="comment"># Create a new AES-256 encryption key</span>
+curl -X POST https://api.securekey.emudhra.com/v1/keys \
+  -H "Authorization: Bearer sk_live_xxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"my-app-key","type":"AES-256","purpose":"ENCRYPT_DECRYPT","expiry_days":365}'</pre>
+          </section>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal="documentation-modal">Close</button>
+        <button type="button" class="btn btn-primary btn-sm" id="download-doc-btn">Download All</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
