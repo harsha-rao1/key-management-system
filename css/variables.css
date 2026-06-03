@@ -1,0 +1,31 @@
+/* Design tokens — enterprise KMS dark theme; shared across all screens */
+:root {
+  --bg: #080c12;
+  --surface: #0f1419;
+  --surface2: #161d27;
+  --surface3: #1c2634;
+  --border: #243044;
+  --text: #e8edf4;
+  --text2: #94a3b8;
+  --text3: #64748b;
+  --accent: #22d3ee;
+  --accent2: #3b82f6;
+  --accent-dim: rgba(34, 211, 238, 0.12);
+  --yellow: #fbbf24;
+  --green: #34d399;
+  --red: #f87171;
+  --orange: #fb923c;
+  --amber: #f59e0b;
+  --demo-banner-bg: #0a0e17;
+  --demo-banner-h: 32px;
+  --purple: #a78bfa;
+  --gradient-cyan: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+  --gradient-banner: linear-gradient(90deg, #22d3ee, #818cf8, #c084fc);
+  --shadow-glow: 0 0 24px rgba(34, 211, 238, 0.15);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --sidebar-width: 240px;
+  --topbar-height: 56px;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
